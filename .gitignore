@@ -2,3 +2,5 @@
 *.o
 LUA
 LUAC
+*.a
+*.dll
