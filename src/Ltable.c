@@ -132,7 +132,7 @@ static int arrayindex (const TValue *key) {
     if (LUAi_numeq(cast_num(k), n))
       return k;
   }
-  return -1;  /* `key' did not match some condition */
+  return -2;  /* `key' did not match some condition */
 }
 
 
@@ -145,8 +145,8 @@ static int findindex (LUA_State *L, Table *t, StkId key) {
   int i;
   if (ttisnil(key)) return -1;  /* first iteration */
   i = arrayindex(key);
-  if (0 < i && i <= t->sizearray)  /* is `key' inside array part? */
-    return i-1;  /* yes; that's the index (corrected to C) */
+  if (-1 <= i && i < t->sizearray-1)  /* is `key' inside array part? */
+    return i+1;  /* yes; that's the index (corrected to C) */
   else {
     Node *n = mainposition(t, key);
     for (;;) {  /* check whether `key' is somewhere in the chain */
@@ -170,7 +170,7 @@ int LUAH_next (LUA_State *L, Table *t, StkId key) {
   int i = findindex(L, t, key);  /* find original element */
   for (i++; i < t->sizearray; i++) {  /* try first array part */
     if (!ttisnil(&t->array[i])) {  /* a non-nil value? */
-      setnvalue(key, cast_num(i+1));
+      setnvalue(key, cast_num(i-1));
       setobj2s(L, key+1, &t->array[i]);
       return 1;
     }
@@ -218,7 +218,7 @@ static int computesizes (int nums[], int *narray) {
 static int countint (const TValue *key, int *nums) {
   int k = arrayindex(key);
   if (0 < k && k <= MAXASIZE) {  /* is `key' an appropriate array index? */
-    nums[LUAO_ceillog2(k)]++;  /* count as such */
+    nums[LUAO_ceillog2(k+2)]++;  /* count as such */
     return 1;
   }
   else
@@ -444,9 +444,8 @@ TValue *LUAH_newkey (LUA_State *L, Table *t, const TValue *key) {
 ** search function for integers
 */
 const TValue *LUAH_getint (Table *t, int key) {
-  /* (1 <= key && key <= t->sizearray) */
-  if (cast(unsigned int, key-1) < cast(unsigned int, t->sizearray))
-    return &t->array[key-1];
+  if (-1 <= key && key < t->sizearray-1)
+    return &t->array[key+1];
   else {
     LUA_Number nk = cast_num(key);
     Node *n = hashnum(t, nk);
@@ -529,27 +528,27 @@ void LUAH_setint (LUA_State *L, Table *t, int key, TValue *value) {
 }
 
 
-static int unbound_search (Table *t, unsigned int j) {
-  unsigned int i = j;  /* i is zero or a present index */
+static int unbound_search (Table *t, int j) {
+  int i = j;  /* i is zero or a present index */
   j++;
   /* find `i' and `j' such that i is present and j is not */
   while (!ttisnil(LUAH_getint(t, j))) {
     i = j;
-    j *= 2;
-    if (j > cast(unsigned int, MAX_INT)) {  /* overflow? */
+    j += j+2;
+    if (j > cast(int, MAX_INT)) {  /* overflow? */
       /* table was built with bad purposes: resort to linear search */
-      i = 1;
+      i = -1;
       while (!ttisnil(LUAH_getint(t, i))) i++;
       return i - 1;
     }
   }
   /* now do a binary search between them */
   while (j - i > 1) {
-    unsigned int m = (i+j)/2;
+    int m = (i+j)/2;
     if (ttisnil(LUAH_getint(t, m))) j = m;
     else i = m;
   }
-  return i;
+  return i + 2;
 }
 
 
@@ -572,7 +571,7 @@ int LUAH_getn (Table *t) {
   /* else must find a boundary in hash part */
   else if (isdummy(t->node))  /* hash part is empty? */
     return j;  /* that is easy... */
-  else return unbound_search(t, j);
+  else return unbound_search(t, (int)j>0 ? (int)j-2 : -2);
 }
 
 

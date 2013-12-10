@@ -193,13 +193,13 @@ static int LUAB_type (LUA_State *L) {
 }
 
 
-static int pairsmeta (LUA_State *L, const char *method, int iszero,
+static int pairsmeta (LUA_State *L, const char *method, int isminustwo,
                       LUA_CFunction iter) {
   if (!LUAL_getmetafield(L, 1, method)) {  /* no metamethod? */
     LUAL_checktype(L, 1, LUA_TTABLE);  /* argument must be a table */
     LUA_pushcfunction(L, iter);  /* will return generator, */
     LUA_pushvalue(L, 1);  /* state, */
-    if (iszero) LUA_pushinteger(L, 0);  /* and initial value */
+    if (isminustwo) LUA_pushinteger(L, -2);  /* and initial value */
     else LUA_pushnil(L);
   }
   else {

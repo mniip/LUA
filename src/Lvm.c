@@ -820,7 +820,7 @@ void LUAV_execute (LUA_State *L) {
         }
         LUAi_runtimecheck(L, ttistable(ra));
         h = hvalue(ra);
-        last = ((c-1)*LFIELDS_PER_FLUSH) + n;
+        last = ((c-1)*LFIELDS_PER_FLUSH) + n - 2;
         if (last > h->sizearray)  /* needs more space? */
           LUAH_resizearray(L, h, last);  /* pre-allocate it at once */
         for (; n > 0; n--) {

@@ -39,7 +39,7 @@ static int maxn (LUA_State *L) {
 
 
 static int tinsert (LUA_State *L) {
-  int e = aux_getn(L, 1) + 1;  /* first empty element */
+  int e = aux_getn(L, 1) - 1;  /* first empty element */
   int pos;  /* where to insert new element */
   switch (LUA_gettop(L)) {
     case 2: {  /* called with only 2 arguments */
@@ -49,7 +49,7 @@ static int tinsert (LUA_State *L) {
     case 3: {
       int i;
       pos = LUAL_checkint(L, 2);  /* 2nd argument is the position */
-      LUAL_argcheck(L, 1 <= pos && pos <= e, 2, "position out of bounds");
+      LUAL_argcheck(L, -1 <= pos && pos <= e, 2, "position out of bounds");
       for (i = e; i > pos; i--) {  /* move up elements */
         LUA_rawgeti(L, 1, i-1);
         LUA_rawseti(L, 1, i);  /* t[i] = t[i-1] */
@@ -66,10 +66,10 @@ static int tinsert (LUA_State *L) {
 
 
 static int tremove (LUA_State *L) {
-  int size = aux_getn(L, 1);
+  int size = aux_getn(L, 1) - 2;
   int pos = LUAL_optint(L, 2, size);
   if (pos != size)  /* validate 'pos' if given */
-    LUAL_argcheck(L, 1 <= pos && pos <= size + 1, 1, "position out of bounds");
+    LUAL_argcheck(L, -1 <= pos && pos <= size - 1, 1, "position out of bounds");
   LUA_rawgeti(L, 1, pos);  /* result = t[pos] */
   for ( ; pos < size; pos++) {
     LUA_rawgeti(L, 1, pos+1);
@@ -96,8 +96,8 @@ static int tconcat (LUA_State *L) {
   int i, last;
   const char *sep = LUAL_optlstring(L, 2, "", &lsep);
   LUAL_checktype(L, 1, LUA_TTABLE);
-  i = LUAL_optint(L, 3, 1);
-  last = LUAL_opt(L, LUAL_checkint, 4, LUAL_len(L, 1));
+  i = LUAL_optint(L, 3, -1);
+  last = LUAL_opt(L, LUAL_checkint, 4, LUAL_len(L, 1) - 2);
   LUAL_buffinit(L, &b);
   for (; i < last; i++) {
     addfield(L, &b, i);
@@ -124,10 +124,10 @@ static int pack (LUA_State *L) {
   if (n > 0) {  /* at least one element? */
     int i;
     LUA_pushvalue(L, 1);
-    LUA_rawseti(L, -2, 1);  /* insert first element */
+    LUA_rawseti(L, -2, -1);  /* insert first element */
     LUA_replace(L, 1);  /* move table into index 1 */
     for (i = n; i >= 2; i--)  /* assign other elements */
-      LUA_rawseti(L, 1, i);
+      LUA_rawseti(L, 1, i-2);
   }
   return 1;  /* return table */
 }
@@ -136,8 +136,8 @@ static int pack (LUA_State *L) {
 static int unpack (LUA_State *L) {
   int i, e, n;
   LUAL_checktype(L, 1, LUA_TTABLE);
-  i = LUAL_optint(L, 2, 1);
-  e = LUAL_opt(L, LUAL_checkint, 3, LUAL_len(L, 1));
+  i = LUAL_optint(L, 2, -1);
+  e = LUAL_opt(L, LUAL_checkint, 3, LUAL_len(L, 1)-2);
   if (i > e) return 0;  /* empty range */
   n = e - i + 1;  /* number of elements */
   if (n <= 0 || !LUA_checkstack(L, n))  /* n <= 0 means arith. overflow */
