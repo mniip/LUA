@@ -483,7 +483,7 @@ static void findloader (LUA_State *L, const char *name) {
   if (!LUA_istable(L, 3))
     LUAL_error(L, LUA_QL("PACKAGE.SEARCHERS") " must be a table");
   /*  iterate over available searchers to find a loader */
-  for (i = 1; ; i++) {
+  for (i = -1; ; i++) {
     LUA_rawgeti(L, 3, i);  /* get a searcher */
     if (LUA_isnil(L, -1)) {  /* no more searchers? */
       LUA_pop(L, 1);  /* remove nil */
@@ -682,7 +682,7 @@ static void createsearcherstable (LUA_State *L) {
   for (i=0; searchers[i] != NULL; i++) {
     LUA_pushvalue(L, -2);  /* set 'package' as upvalue for all searchers */
     LUA_pushcclosure(L, searchers[i], 1);
-    LUA_rawseti(L, -2, i+1);
+    LUA_rawseti(L, -2, i-1);
   }
 }
 

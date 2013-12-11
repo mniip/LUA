@@ -133,7 +133,7 @@ static int LUAB_rawequal (LUA_State *L) {
 static int LUAB_rawlen (LUA_State *L) {
   int t = LUA_type(L, 1);
   LUAL_argcheck(L, t == LUA_TTABLE || t == LUA_TSTRING, 1,
-                   "TABLE or string expected");
+                   "TABLE or STRING expected");
   LUA_pushinteger(L, LUA_rawlen(L, 1));
   return 1;
 }
@@ -414,6 +414,157 @@ static int LUAB_tostring (LUA_State *L) {
 }
 
 
+/*
+** {======================================================
+** Function metatable
+** =======================================================
+*/
+
+
+static int aux_func_sub_closure(LUA_State *L) {
+  int narg = LUA_gettop(L);
+  int i=-1;
+  LUA_pushvalue(L, LUA_upvalueindex(2));
+  LUA_pushvalue(L, LUA_upvalueindex(1));
+  while (1) {
+    int v;
+    LUA_pushnumber(L, i);
+    LUA_gettable(L, narg+1);
+    if(LUA_isnumber(L, -1)) {
+      v = LUA_tonumber(L, -1);
+      LUA_pop(L, 1);
+      if(0<v && v<=narg)
+        LUA_pushvalue(L, v);
+      else
+        LUA_pushnil(L);
+    }
+    else {
+      LUA_pop(L, 1);
+      break;
+    }
+    i++;
+  }
+  LUA_call(L, i+1, LUA_MULTRET);
+  return LUA_gettop(L)-narg-1;
+}
+
+
+static int aux_func_sub(LUA_State *L) {
+  LUAL_checktype(L, 1, LUA_TFUNCTION);
+  LUAL_checktype(L, 2, LUA_TTABLE);
+  LUA_pushcclosure(L, aux_func_sub_closure, 2);
+  return 1;
+}
+
+
+static int aux_func_mod_closure(LUA_State *L) {
+  int narg = LUA_gettop(L);
+  int i;
+  LUA_pushvalue(L, LUA_upvalueindex(1));
+  for (i=1; i<=narg; i++)
+    LUA_pushvalue(L, i);
+  LUA_call(L, narg, LUA_MULTRET);
+  int nres = LUA_gettop(L)-narg;
+  LUA_pushvalue(L, LUA_upvalueindex(2));
+  for (i=1; i<=nres; i++)
+    LUA_pushvalue(L, i+narg);
+  LUA_call(L, nres, LUA_MULTRET);
+  return LUA_gettop(L)-narg-nres;
+}
+
+
+static int aux_func_mod(LUA_State *L) {
+  LUAL_checktype(L, 1, LUA_TFUNCTION);
+  LUAL_checktype(L, 2, LUA_TFUNCTION);
+  LUA_pushcclosure(L, aux_func_mod_closure, 2);
+  return 1;
+}
+
+
+static int aux_func_index_closure(LUA_State *L) {
+  int narg = LUA_gettop(L);
+  int i;
+  LUA_pushvalue(L, LUA_upvalueindex(1));
+  LUA_pushvalue(L, LUA_upvalueindex(2));
+  for (i=1; i<=narg; i++)
+    LUA_pushvalue(L, i);
+  LUA_call(L, narg+1, LUA_MULTRET);
+  return LUA_gettop(L)-narg;
+}
+
+
+static int aux_func_index(LUA_State *L) {
+  LUAL_checktype(L, 1, LUA_TFUNCTION);
+  LUA_pushcclosure(L, aux_func_index_closure, 2);
+  return 1;
+}
+
+
+static void aux_funcmeta(LUA_State *L) {
+  LUA_pushcfunction(L, aux_func_sub);
+  LUA_newtable(L); /* the metatable */
+
+  LUA_pushcfunction(L, aux_func_sub);
+  LUA_setfield(L, -2, "__SUB");
+
+  LUA_pushcfunction(L, aux_func_mod);
+  LUA_setfield(L, -2, "__MOD");
+
+  LUA_pushcfunction(L, aux_func_index);
+  LUA_setfield(L, -2, "__INDEX");
+
+  LUA_setmetatable(L, -2);
+  LUA_pop(L, 1);
+}
+
+#define FOP_CLOSURE(NAME, CODE)static int aux_fop_##NAME(LUA_State *L) {CODE return 1;}
+FOP_CLOSURE(add, LUA_settop(L, 2); LUA_arith(L, LUA_OPADD);)
+FOP_CLOSURE(sub, LUA_settop(L, 2); LUA_arith(L, LUA_OPSUB);)
+FOP_CLOSURE(mul, LUA_settop(L, 2); LUA_arith(L, LUA_OPMUL);)
+FOP_CLOSURE(div, LUA_settop(L, 2); LUA_arith(L, LUA_OPDIV);)
+FOP_CLOSURE(mod, LUA_settop(L, 2); LUA_arith(L, LUA_OPMOD);)
+FOP_CLOSURE(pow, LUA_settop(L, 2); LUA_arith(L, LUA_OPPOW);)
+FOP_CLOSURE(unm, LUA_settop(L, 1); LUA_arith(L, LUA_OPUNM);)
+FOP_CLOSURE(eq, LUA_settop(L, 2); LUA_pushboolean(L, LUA_compare(L, 1, 2, LUA_OPEQ));)
+FOP_CLOSURE(lt, LUA_settop(L, 2); LUA_pushboolean(L, LUA_compare(L, 1, 2, LUA_OPLT));)
+FOP_CLOSURE(gt, LUA_settop(L, 2); LUA_pushboolean(L, !LUA_compare(L, 1, 2, LUA_OPLE));)
+FOP_CLOSURE(or, LUA_settop(L, 2); if(LUA_toboolean(L, 1))LUA_pop(L, 1);)
+FOP_CLOSURE(and, LUA_settop(L, 2); if(!LUA_toboolean(L, 1))LUA_pop(L, 1);)
+FOP_CLOSURE(not, LUA_settop(L, 1); LUA_pushboolean(L, !LUA_toboolean(L, 1));)
+FOP_CLOSURE(idx, LUA_settop(L, 2); LUA_gettable(L, 1);)
+FOP_CLOSURE(self, LUA_settop(L, 2); LUA_gettable(L, 1); LUA_pushvalue(L, 1); LUA_gettable(L, -2);)
+FOP_CLOSURE(nop, return 0;)
+
+static int LUAB_fop(LUA_State *L) {
+  if(LUA_isnoneornil(L, 1)) {
+      LUA_pushcfunction(L, aux_fop_nop);
+  }
+  else {
+    switch(LUAL_optstring(L, 1, "")[0]) {
+      case '+': LUA_pushcfunction(L, aux_fop_add); break;
+      case '-': LUA_pushcfunction(L, aux_fop_sub); break;
+      case '*': LUA_pushcfunction(L, aux_fop_mul); break;
+      case '/': LUA_pushcfunction(L, aux_fop_div); break;
+      case '%': LUA_pushcfunction(L, aux_fop_mod); break;
+      case '^': LUA_pushcfunction(L, aux_fop_pow); break;
+      case '_': LUA_pushcfunction(L, aux_fop_unm); break;
+      case '=': LUA_pushcfunction(L, aux_fop_eq); break;
+      case '<': LUA_pushcfunction(L, aux_fop_lt); break;
+      case '>': LUA_pushcfunction(L, aux_fop_gt); break;
+      case '|': LUA_pushcfunction(L, aux_fop_or); break;
+      case '&': LUA_pushcfunction(L, aux_fop_and); break;
+      case '!': LUA_pushcfunction(L, aux_fop_not); break;
+      case '.': LUA_pushcfunction(L, aux_fop_idx); break;
+      case ':': LUA_pushcfunction(L, aux_fop_self); break;
+      default: LUA_pushcfunction(L, aux_fop_nop); break;
+    }
+  }
+  return 1;
+}
+
+/* }====================================================== */
+
+
 static const LUAL_Reg base_funcs[] = {
   {"ASSERT", LUAB_assert},
   {"COLLECTGARBAGE", LUAB_collectgarbage},
@@ -440,6 +591,7 @@ static const LUAL_Reg base_funcs[] = {
   {"TOSTRING", LUAB_tostring},
   {"TYPE", LUAB_type},
   {"XPCALL", LUAB_xpcall},
+  {"FOP", LUAB_fop},
   {NULL, NULL}
 };
 
@@ -453,6 +605,7 @@ LUAMOD_API int LUAopen_base (LUA_State *L) {
   LUAL_setfuncs(L, base_funcs, 0);
   LUA_pushliteral(L, LUA_VERSION);
   LUA_setfield(L, -2, "_VERSION");  /* set global _VERSION */
+  aux_funcmeta(L);
   return 1;
 }
 
