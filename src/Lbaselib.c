@@ -531,8 +531,10 @@ FOP_CLOSURE(gt, LUA_settop(L, 2); LUA_pushboolean(L, !LUA_compare(L, 1, 2, LUA_O
 FOP_CLOSURE(or, LUA_settop(L, 2); if(LUA_toboolean(L, 1))LUA_pop(L, 1);)
 FOP_CLOSURE(and, LUA_settop(L, 2); if(!LUA_toboolean(L, 1))LUA_pop(L, 1);)
 FOP_CLOSURE(not, LUA_settop(L, 1); LUA_pushboolean(L, !LUA_toboolean(L, 1));)
+FOP_CLOSURE(len, LUA_settop(L, 1); LUA_pushnumber(L, LUAL_len(L, 1));)
+FOP_CLOSURE(cct, LUA_settop(L, 2); LUA_concat(L, 2);)
 FOP_CLOSURE(idx, LUA_settop(L, 2); LUA_gettable(L, 1);)
-FOP_CLOSURE(self, LUA_settop(L, 2); LUA_gettable(L, 1); LUA_pushvalue(L, 1); LUA_gettable(L, -2);)
+FOP_CLOSURE(self, LUA_settop(L, 2); LUA_gettable(L, 1); LUA_pushvalue(L, 1); LUA_gettable(L, 2);)
 FOP_CLOSURE(nop, return 0;)
 
 static int LUAB_fop(LUA_State *L) {
@@ -554,6 +556,8 @@ static int LUAB_fop(LUA_State *L) {
       case '|': LUA_pushcfunction(L, aux_fop_or); break;
       case '&': LUA_pushcfunction(L, aux_fop_and); break;
       case '!': LUA_pushcfunction(L, aux_fop_not); break;
+      case '#': LUA_pushcfunction(L, aux_fop_len); break;
+      case ';': LUA_pushcfunction(L, aux_fop_cct); break;
       case '.': LUA_pushcfunction(L, aux_fop_idx); break;
       case ':': LUA_pushcfunction(L, aux_fop_self); break;
       default: LUA_pushcfunction(L, aux_fop_nop); break;
