@@ -421,6 +421,29 @@ static int LUAB_tostring (LUA_State *L) {
 */
 
 
+static int aux_func_add_closure(LUA_State *L) {
+  int narg = LUA_gettop(L);
+  int s=LUA_tonumber(L, LUA_upvalueindex(2));
+  int i;
+  if(s<0)s=0;
+  LUA_pushvalue(L, LUA_upvalueindex(1));
+  for(i=s; i<narg; i++)
+	  LUA_pushvalue(L, i+1);
+  LUA_call(L, narg-s, LUA_MULTRET);
+  for(i=s; i<narg; i++)
+	  LUA_remove(L, s+1);
+  return LUA_gettop(L);
+}
+
+
+static int aux_func_add(LUA_State *L) {
+  LUAL_checktype(L, 1, LUA_TFUNCTION);
+  LUAL_checktype(L, 2, LUA_TNUMBER);
+  LUA_pushcclosure(L, aux_func_add_closure, 2);
+  return 1;
+}
+
+
 static int aux_func_sub_closure(LUA_State *L) {
   int narg = LUA_gettop(L);
   int i=-1;
@@ -504,6 +527,9 @@ static void aux_funcmeta(LUA_State *L) {
   LUA_pushcfunction(L, aux_func_sub);
   LUA_newtable(L); /* the metatable */
 
+  LUA_pushcfunction(L, aux_func_add);
+  LUA_setfield(L, -2, "__ADD");
+
   LUA_pushcfunction(L, aux_func_sub);
   LUA_setfield(L, -2, "__SUB");
 
@@ -536,6 +562,9 @@ FOP_CLOSURE(cct, LUA_settop(L, 2); LUA_concat(L, 2);)
 FOP_CLOSURE(idx, LUA_settop(L, 2); LUA_gettable(L, 1);)
 FOP_CLOSURE(self, LUA_settop(L, 2); LUA_gettable(L, 1); LUA_pushvalue(L, 1); LUA_gettable(L, 2);)
 FOP_CLOSURE(nop, return 0;)
+FOP_CLOSURE(id, return LUA_gettop(L);)
+FOP_CLOSURE(call, LUA_call(L, LUA_gettop(L)-1, LUA_MULTRET); return LUA_gettop(L);)
+FOP_CLOSURE(dup, int narg=LUA_gettop(L); int i; for(i=1; i<=narg; i++) LUA_pushvalue(L, i); return narg*2;)
 
 static int LUAB_fop(LUA_State *L) {
   if(LUA_isnoneornil(L, 1)) {
@@ -560,6 +589,9 @@ static int LUAB_fop(LUA_State *L) {
       case ';': LUA_pushcfunction(L, aux_fop_cct); break;
       case '.': LUA_pushcfunction(L, aux_fop_idx); break;
       case ':': LUA_pushcfunction(L, aux_fop_self); break;
+      case ' ': LUA_pushcfunction(L, aux_fop_id); break;
+      case '@': LUA_pushcfunction(L, aux_fop_call); break;
+      case '$': LUA_pushcfunction(L, aux_fop_dup); break;
       default: LUA_pushcfunction(L, aux_fop_nop); break;
     }
   }
