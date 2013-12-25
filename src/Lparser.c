@@ -137,11 +137,13 @@ static void check_match (LexState *ls, int what, int who, int where) {
 
 
 static TString *str_checkname (LexState *ls) {
-  TString *ts;
-  check(ls, TK_NAME);
-  ts = ls->t.seminfo.ts;
-  LUAX_next(ls);
-  return ts;
+  if(ls->t.token == TK_NAME)
+  {
+    TString *ts = ls->t.seminfo.ts;
+    LUAX_next(ls);
+    return ts;
+  }
+  return LUAS_new(ls->L, "");
 }
 
 
@@ -655,11 +657,11 @@ static void recfield (LexState *ls, struct ConsControl *cc) {
   int reg = ls->fs->freereg;
   expdesc key, val;
   int rkkey;
-  if (ls->t.token == TK_NAME) {
+  if (ls->t.token != '[') {
     checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
     checkname(ls, &key);
   }
-  else  /* ls->t.token == '[' */
+  else  /* ls->t.token != TK_NAME */
     yindex(ls, &key);
   cc->nh++;
   checknext(ls, '=');
@@ -709,12 +711,13 @@ static void field (LexState *ls, struct ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->t.token) {
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
-      if (LUAX_lookahead(ls) != '=')  /* expression? */
+      if (LUAX_lookahead(ls) != '=' && ls->t.token != '=')  /* expression? */
         listfield(ls, cc);
       else
         recfield(ls, cc);
       break;
     }
+    case '=':
     case '[': {
       recfield(ls, cc);
       break;
@@ -890,7 +893,8 @@ static void primaryexp (LexState *ls, expdesc *v) {
       return;
     }
     default: {
-      LUAX_syntaxerror(ls, "unexpected symbol");
+      singlevar(ls, v);
+	  return;
     }
   }
 }
