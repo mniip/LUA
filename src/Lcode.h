@@ -72,7 +72,7 @@ LUAI_FUNC void LUAK_patchlist (FuncState *fs, int list, int target);
 LUAI_FUNC void LUAK_patchtohere (FuncState *fs, int list);
 LUAI_FUNC void LUAK_patchclose (FuncState *fs, int list, int level);
 LUAI_FUNC void LUAK_concat (FuncState *fs, int *l1, int l2);
-LUAI_FUNC int LUAK_getlabel (FuncState *fs);
+LUAI_FUNC int LUAK_getcomefrom (FuncState *fs);
 LUAI_FUNC void LUAK_prefix (FuncState *fs, UnOpr op, expdesc *v, int line);
 LUAI_FUNC void LUAK_infix (FuncState *fs, BinOpr op, expdesc *v);
 LUAI_FUNC void LUAK_posfix (FuncState *fs, BinOpr op, expdesc *v1,

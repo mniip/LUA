@@ -59,16 +59,16 @@ typedef struct Vardesc {
 } Vardesc;
 
 
-/* description of pending goto statements and label statements */
+/* description of pending label statements and comefrom statements */
 typedef struct Labeldesc {
-  TString *name;  /* label identifier */
+  TString *name;  /* comefrom identifier */
   int pc;  /* position in code */
   int line;  /* line where it appeared */
   lu_byte nactvar;  /* local level where it appears in current block */
 } Labeldesc;
 
 
-/* list of labels or gotos */
+/* list of comefroms or labels */
 typedef struct Labellist {
   Labeldesc *arr;  /* array */
   int n;  /* number of entries in use */
@@ -83,8 +83,8 @@ typedef struct Dyndata {
     int n;
     int size;
   } actvar;
-  Labellist gt;  /* list of pending gotos */
-  Labellist label;   /* list of active labels */
+  Labellist gt;  /* list of pending labels */
+  Labellist comefrom;   /* list of active comefroms */
 } Dyndata;
 
 
@@ -100,7 +100,7 @@ typedef struct FuncState {
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
   int pc;  /* next position to code (equivalent to `ncode') */
-  int lasttarget;   /* 'label' of last 'jump label' */
+  int lasttarget;   /* 'comefrom' of last 'jump comefrom' */
   int jpc;  /* list of pending jumps to `pc' */
   int nk;  /* number of elements in `k' */
   int np;  /* number of elements in `p' */

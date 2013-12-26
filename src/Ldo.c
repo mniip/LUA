@@ -659,13 +659,13 @@ int LUAD_protectedparser (LUA_State *L, ZIO *z, const char *name,
   p.z = z; p.name = name; p.mode = mode;
   p.dyd.actvar.arr = NULL; p.dyd.actvar.size = 0;
   p.dyd.gt.arr = NULL; p.dyd.gt.size = 0;
-  p.dyd.label.arr = NULL; p.dyd.label.size = 0;
+  p.dyd.comefrom.arr = NULL; p.dyd.comefrom.size = 0;
   LUAZ_initbuffer(L, &p.buff);
   status = LUAD_pcall(L, f_parser, &p, savestack(L, L->top), L->errfunc);
   LUAZ_freebuffer(L, &p.buff);
   LUAM_freearray(L, p.dyd.actvar.arr, p.dyd.actvar.size);
   LUAM_freearray(L, p.dyd.gt.arr, p.dyd.gt.size);
-  LUAM_freearray(L, p.dyd.label.arr, p.dyd.label.size);
+  LUAM_freearray(L, p.dyd.comefrom.arr, p.dyd.comefrom.size);
   L->nny--;
   return status;
 }

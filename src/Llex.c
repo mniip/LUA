@@ -35,7 +35,7 @@
 /* ORDER RESERVED */
 static const char *const LUAX_tokens [] = {
     "AND", "BREAK", "DO", "ELSE", "ELSEIF",
-    "END", "FALSE", "FOR", "FUNCTION", "GOTO", "IF",
+    "END", "FALSE", "FOR", "FUNCTION", "COMEFROM", "IF",
     "IN", "LOCAL", "NIL", "NOT", "OR", "REPEAT",
     "RETURN", "THEN", "TRUE", "UNTIL", "WHILE",
     "..", "...", "==", ">=", "<=", "~=", "::", "<EOF>",

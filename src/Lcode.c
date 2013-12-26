@@ -91,7 +91,7 @@ static void fixjump (FuncState *fs, int pc, int dest) {
 ** returns current `pc' and marks it as a jump target (to avoid wrong
 ** optimizations with consecutive instructions not in the same basic block).
 */
-int LUAK_getlabel (FuncState *fs) {
+int LUAK_getcomefrom (FuncState *fs) {
   fs->lasttarget = fs->pc;
   return fs->pc;
 }
@@ -190,7 +190,7 @@ LUAI_FUNC void LUAK_patchclose (FuncState *fs, int list, int level) {
 
 
 void LUAK_patchtohere (FuncState *fs, int list) {
-  LUAK_getlabel(fs);
+  LUAK_getcomefrom(fs);
   LUAK_concat(fs, &fs->jpc, list);
 }
 
@@ -412,8 +412,8 @@ void LUAK_dischargevars (FuncState *fs, expdesc *e) {
 }
 
 
-static int code_label (FuncState *fs, int A, int b, int jump) {
-  LUAK_getlabel(fs);  /* those instructions may be jump targets */
+static int code_comefrom (FuncState *fs, int A, int b, int jump) {
+  LUAK_getcomefrom(fs);  /* those instructions may be jump targets */
   return LUAK_codeABC(fs, OP_LOADBOOL, A, b, jump);
 }
 
@@ -475,11 +475,11 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
     int p_t = NO_JUMP;  /* position of an eventual LOAD true */
     if (need_value(fs, e->t) || need_value(fs, e->f)) {
       int fj = (e->k == VJMP) ? NO_JUMP : LUAK_jump(fs);
-      p_f = code_label(fs, reg, 0, 1);
-      p_t = code_label(fs, reg, 1, 0);
+      p_f = code_comefrom(fs, reg, 0, 1);
+      p_t = code_comefrom(fs, reg, 1, 0);
       LUAK_patchtohere(fs, fj);
     }
-    final = LUAK_getlabel(fs);
+    final = LUAK_getcomefrom(fs);
     patchlistaux(fs, e->f, final, reg, p_f);
     patchlistaux(fs, e->t, final, reg, p_t);
   }

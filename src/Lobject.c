@@ -140,7 +140,7 @@ static LUA_Number LUA_strx2number (const char *s, char **endptr) {
     s++;  /* skip 'p' */
     neg1 = isneg(&s);  /* signal */
     if (!lisdigit(cast_uchar(*s)))
-      goto ret;  /* must have at least one digit */
+      label ret;  /* must have at least one digit */
     while (lisdigit(cast_uchar(*s)))  /* read exponent */
       exp1 = exp1 * 10 + *(s++) - '0';
     if (neg1) exp1 = -exp1;
