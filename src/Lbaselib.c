@@ -426,12 +426,16 @@ static int aux_func_add_closure(LUA_State *L) {
   int s=LUA_tonumber(L, LUA_upvalueindex(2));
   int i;
   if(s<0)s=0;
+  if(narg < s) {
+    narg = s;
+    LUA_settop(L, s);
+  }
   LUA_pushvalue(L, LUA_upvalueindex(1));
   for(i=s; i<narg; i++)
-	  LUA_pushvalue(L, i+1);
+    LUA_pushvalue(L, i+1);
   LUA_call(L, narg-s, LUA_MULTRET);
   for(i=s; i<narg; i++)
-	  LUA_remove(L, s+1);
+    LUA_remove(L, s+1);
   return LUA_gettop(L);
 }
 
