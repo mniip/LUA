@@ -194,7 +194,7 @@ static void new_localvarliteral_ (LexState *ls, const char *name, size_t sz) {
 }
 
 #define new_localvarliteral(ls,v) \
-	new_localvarliteral_(ls, "" v, (sizeof(v)/sizeof(char))-1)
+    new_localvarliteral_(ls, "" v, (sizeof(v)/sizeof(char))-1)
 
 
 static LocVar *getlocvar (FuncState *fs, int i) {
@@ -270,10 +270,10 @@ static void markupval (FuncState *fs, int level) {
   Find variable with given name 'n'. If it is an upvalue, add this
   upvalue into all intermediate functions.
 */
-static int singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
+static int singlevaraux (FuncState *fs, TString *n, expdesc *var, int base, int mindepth) {
   if (fs == NULL)  /* no more levels? */
     return VVOID;  /* default is global */
-  else {
+  else if (mindepth == 0) {
     int v = searchvar(fs, n);  /* look up locals at current level */
     if (v >= 0) {  /* found? */
       init_exp(var, VLOCAL, v);  /* variable is local */
@@ -281,27 +281,35 @@ static int singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
         markupval(fs, v);  /* local will be used as an upval */
       return VLOCAL;
     }
-    else {  /* not found as local at current level; try upvalues */
-      int idx = searchupvalue(fs, n);  /* try existing upvalues */
-      if (idx < 0) {  /* not found? */
-        if (singlevaraux(fs->prev, n, var, 0) == VVOID) /* try upper levels */
-          return VVOID;  /* not found; is a global */
-        /* else was LOCAL or UPVAL */
-        idx  = newupvalue(fs, n, var);  /* will be a new upvalue */
-      }
+  }
+  /* not found as local at current level, or level insufficient; try upvalues */
+  if(mindepth == 0)
+  {
+    int idx = searchupvalue(fs, n); /* try existing upvalues */
+    if (idx >= 0) {  /* found? */
       init_exp(var, VUPVAL, idx);
       return VUPVAL;
     }
   }
+  if (singlevaraux(fs->prev, n, var, 0, mindepth > 0 ? mindepth - 1 : 0) == VVOID) /* try upper levels */
+    return VVOID;  /* not found; is a global */
+  int idx  = newupvalue(fs, n, var);  /* will be a new upvalue */
+  init_exp(var, VUPVAL, idx);
+  return VUPVAL;
 }
 
 
 static void singlevar (LexState *ls, expdesc *var) {
-  TString *varname = str_checkname(ls);
+  int mindepth = 0;
+  while(ls->t.token == '@') {
+    LUAX_next(ls);
+    mindepth++;
+  }
   FuncState *fs = ls->fs;
-  if (singlevaraux(fs, varname, var, 1) == VVOID) {  /* global name? */
+  TString *varname = str_checkname(ls);
+  if (singlevaraux(fs, varname, var, 0, mindepth) == VVOID) {  /* global name? */
     expdesc key;
-    singlevaraux(fs, ls->envn, var, 1);  /* get environment variable */
+    singlevaraux(fs, ls->envn, var, 1, 0);  /* get environment variable */
     LUA_assert(var->k == VLOCAL || var->k == VUPVAL);
     codestring(ls, &key, varname);  /* key is variable name */
     LUAK_indexed(fs, var, &key);  /* env[varname] */
@@ -868,11 +876,11 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       LUAX_next(ls);  /* must use `seminfo' before `next' */
       break;
     }
-	case TK_DO: {  /* funcargs -> DO block END */
-	  LUAX_next(ls);
+    case TK_DO: {  /* funcargs -> DO block END */
+      LUAX_next(ls);
       simplebody(ls, &args, ls->linenumber);
-	  break;
-	}
+      break;
+    }
     default: {
       LUAX_syntaxerror(ls, "function arguments expected");
     }
@@ -913,13 +921,9 @@ static void primaryexp (LexState *ls, expdesc *v) {
       LUAK_dischargevars(ls->fs, v);
       return;
     }
-    case TK_NAME: {
-      singlevar(ls, v);
-      return;
-    }
     default: {
       singlevar(ls, v);
-	  return;
+      return;
     }
   }
 }
@@ -952,7 +956,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         funcargs(ls, v, line);
         break;
       }
-	  case '(': case TK_STRING: case '{': case TK_DO: {  /* funcargs */
+      case '(': case TK_STRING: case '{': case TK_DO: {  /* funcargs */
         LUAK_exp2nextreg(fs, v);
         funcargs(ls, v, line);
         break;
@@ -1004,11 +1008,11 @@ static void simpleexp (LexState *ls, expdesc *v) {
       body(ls, v, 0, ls->linenumber);
       return;
     }
-	case TK_DO: {
-	  LUAX_next(ls);
+    case TK_DO: {
+      LUAX_next(ls);
       simplebody(ls, v, ls->linenumber);
-	  return;
-	}
+      return;
+    }
     default: {
       suffixedexp(ls, v);
       return;
@@ -1216,7 +1220,7 @@ static void labelstat (LexState *ls, int pc) {
   int g;
   if (testnext(ls, TK_DBCOLON)) {
     comefrom = str_checkname(ls);
-	checknext(ls, TK_DBCOLON);
+    checknext(ls, TK_DBCOLON);
   } else {
     LUAX_next(ls);  /* skip break */
     comefrom = LUAS_new(ls->L, "BREAK");
