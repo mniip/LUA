@@ -810,6 +810,21 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
 }
 
 
+static void simplebody (LexState *ls, expdesc *e, int line) {
+  /* simplebody -> block END */
+  FuncState new_fs;
+  BlockCnt bl;
+  new_fs.f = addprototype(ls);
+  new_fs.f->linedefined = line;
+  open_func(ls, &new_fs, &bl);
+  statlist(ls);
+  new_fs.f->lastlinedefined = ls->linenumber;
+  check_match(ls, TK_END, TK_DO, line);
+  codeclosure(ls, e);
+  close_func(ls);
+}
+
+
 static int explist (LexState *ls, expdesc *v) {
   /* explist -> expr { `,' expr } */
   int n = 1;  /* at least one expression */
@@ -848,6 +863,11 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       LUAX_next(ls);  /* must use `seminfo' before `next' */
       break;
     }
+	case TK_DO: {  /* funcargs -> DO block END */
+	  LUAX_next(ls);
+      simplebody(ls, &args, ls->linenumber);
+	  break;
+	}
     default: {
       LUAX_syntaxerror(ls, "function arguments expected");
     }
@@ -927,7 +947,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         funcargs(ls, v, line);
         break;
       }
-      case '(': case TK_STRING: case '{': {  /* funcargs */
+	  case '(': case TK_STRING: case '{': case TK_DO: {  /* funcargs */
         LUAK_exp2nextreg(fs, v);
         funcargs(ls, v, line);
         break;
@@ -940,7 +960,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
 
 static void simpleexp (LexState *ls, expdesc *v) {
   /* simpleexp -> NUMBER | STRING | NIL | TRUE | FALSE | ... |
-                  constructor | FUNCTION body | suffixedexp */
+                  constructor | FUNCTION body | DO block END | suffixedexp */
   switch (ls->t.token) {
     case TK_NUMBER: {
       init_exp(v, VKNUM, 0);
@@ -979,6 +999,11 @@ static void simpleexp (LexState *ls, expdesc *v) {
       body(ls, v, 0, ls->linenumber);
       return;
     }
+	case TK_DO: {
+	  LUAX_next(ls);
+      simplebody(ls, v, ls->linenumber);
+	  return;
+	}
     default: {
       suffixedexp(ls, v);
       return;
