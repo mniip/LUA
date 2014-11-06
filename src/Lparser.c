@@ -817,6 +817,11 @@ static void simplebody (LexState *ls, expdesc *e, int line) {
   new_fs.f = addprototype(ls);
   new_fs.f->linedefined = line;
   open_func(ls, &new_fs, &bl);
+  new_localvarliteral(ls, "");
+  adjustlocalvars(ls, 1);
+  new_fs.f->numparams = cast_byte(new_fs.nactvar);
+  new_fs.f->is_vararg = 1;
+  LUAK_reserveregs(&new_fs, new_fs.nactvar);
   statlist(ls);
   new_fs.f->lastlinedefined = ls->linenumber;
   check_match(ls, TK_END, TK_DO, line);
