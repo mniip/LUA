@@ -876,11 +876,6 @@ static void funcargs (LexState *ls, expdesc *f, int line) {
       LUAX_next(ls);  /* must use `seminfo' before `next' */
       break;
     }
-    case TK_DO: {  /* funcargs -> DO block END */
-      LUAX_next(ls);
-      simplebody(ls, &args, ls->linenumber);
-      break;
-    }
     default: {
       LUAX_syntaxerror(ls, "function arguments expected");
     }
@@ -956,7 +951,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         funcargs(ls, v, line);
         break;
       }
-      case '(': case TK_STRING: case '{': case TK_DO: {  /* funcargs */
+      case '(': case TK_STRING: case '{': {  /* funcargs */
         LUAK_exp2nextreg(fs, v);
         funcargs(ls, v, line);
         break;
